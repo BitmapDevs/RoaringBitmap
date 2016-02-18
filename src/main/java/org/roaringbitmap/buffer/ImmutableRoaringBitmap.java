@@ -239,7 +239,74 @@ public class ImmutableRoaringBitmap implements Iterable<Integer>, Cloneable, Imm
 
         return answer;
     }
+    
+    /**
+     * Todo: describe properly
+     * 
+     * Basically extract just the values in the specified while avoiding copies as much as possible.
+     * 
+     * @param rb
+     * @param rangeStart
+     * @param rangeEnd
+     * @return
+     */
 
+    private static MutableRoaringBitmap selectRangeWithoutCopy(ImmutableRoaringBitmap rb,
+            final int rangeStart, final int rangeEnd) {
+        final int hbStart = BufferUtil.toIntUnsigned(BufferUtil.highbits(rangeStart));
+        final int lbStart = BufferUtil.toIntUnsigned(BufferUtil.lowbits(rangeStart));
+        final int hbLast = BufferUtil.toIntUnsigned(BufferUtil.highbits(rangeEnd - 1));
+        final int lbLast = BufferUtil.toIntUnsigned(BufferUtil.lowbits(rangeEnd - 1));
+        MutableRoaringBitmap answer = new MutableRoaringBitmap();
+
+        if(hbStart == hbLast) {
+            final int i = rb.highLowContainer.getIndex((short) hbStart);
+            if (i >= 0) {
+                final MappeableContainer c = rb.highLowContainer.getContainerAtIndex(i)
+                        .remove(lbStart, lbLast + 1);
+                if (c.getCardinality() > 0)
+                    ((MutableRoaringArray) answer.highLowContainer).append((short) hbStart, c);
+            }
+            return answer;
+        }
+        int ifirst = rb.highLowContainer.getIndex((short) hbStart);
+        int ilast = rb.highLowContainer.getIndex((short) hbLast);
+        if((ifirst >= 0) && (lbStart != 0)) {
+            final MappeableContainer c = rb.highLowContainer.getContainerAtIndex(ifirst).remove(
+                     lbStart,BufferUtil.maxLowBitAsInteger()+1);
+           if(c.getCardinality()>0) {
+              ((MutableRoaringArray) answer.highLowContainer).append((short) hbStart, c);
+           }
+        }
+
+        for (short hb = (short) (hbStart+1); hb <= hbLast-1; ++hb) {
+            final int i = rb.highLowContainer.getIndex(hb);
+            final int j = answer.getMappeableRoaringArray().getIndex(hb);
+            assert j < 0;
+
+            if (i >= 0) {
+                final MappeableContainer c = rb.highLowContainer
+                        .getContainerAtIndex(i);
+                    answer.getMappeableRoaringArray().insertNewKeyValueAt(
+                            -j - 1, hb, c);
+
+            }
+        }
+        
+        if((ilast >= 0) &&(lbLast != BufferUtil.maxLowBitAsInteger())) {
+            final MappeableContainer c = rb.highLowContainer.getContainerAtIndex(ilast).remove(
+                     0,  lbLast+1);
+           if(c.getCardinality()>0) {
+              ((MutableRoaringArray) answer.highLowContainer).append((short) hbLast,c);
+           }
+        }
+        return answer;
+
+    }
+    
+    
+    
+    
     /**
      * Bitwise OR (union) operation. The provided bitmaps are *not* modified.
      * This operation is thread-safe as long as the provided bitmaps remain
@@ -302,6 +369,23 @@ public class ImmutableRoaringBitmap implements Iterable<Integer>, Cloneable, Imm
         }
         return answer;
     }
+    
+    /** 
+     * TODO: describe
+     * @param x1
+     * @param x2
+     * @param rangeStart
+     * @param rangeEnd
+     * @return
+     */
+    public static MutableRoaringBitmap ranged_or(final ImmutableRoaringBitmap x1,
+            final ImmutableRoaringBitmap x2, int rangeStart, int rangeEnd) {
+        MutableRoaringBitmap mx1 = selectRangeWithoutCopy(x1, rangeStart, rangeEnd);
+        MutableRoaringBitmap mx2 = selectRangeWithoutCopy(x2, rangeStart, rangeEnd);
+        return or(mx1,mx2);
+    }
+
+
 
     /**
      * Cardinality of the bitwise OR (union) operation. The provided bitmaps are *not* modified.
