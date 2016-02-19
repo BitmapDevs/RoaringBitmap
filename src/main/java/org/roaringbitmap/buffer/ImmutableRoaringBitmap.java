@@ -262,8 +262,7 @@ public class ImmutableRoaringBitmap implements Iterable<Integer>, Cloneable, Imm
         if(hbStart == hbLast) {
             final int i = rb.highLowContainer.getIndex((short) hbStart);
             if (i >= 0) {
-                final MappeableContainer c = rb.highLowContainer.getContainerAtIndex(i)
-                        .remove(lbStart, lbLast + 1);
+                final MappeableContainer c = rb.highLowContainer.getContainerAtIndex(i).remove(0,lbStart).remove(lbLast + 1,BufferUtil.maxLowBitAsInteger()+1);
                 if (c.getCardinality() > 0)
                     ((MutableRoaringArray) answer.highLowContainer).append((short) hbStart, c);
             }
@@ -271,9 +270,9 @@ public class ImmutableRoaringBitmap implements Iterable<Integer>, Cloneable, Imm
         }
         int ifirst = rb.highLowContainer.getIndex((short) hbStart);
         int ilast = rb.highLowContainer.getIndex((short) hbLast);
-        if((ifirst >= 0) && (lbStart != 0)) {
+        if(ifirst >= 0) {
             final MappeableContainer c = rb.highLowContainer.getContainerAtIndex(ifirst).remove(
-                     lbStart,BufferUtil.maxLowBitAsInteger()+1);
+                     0,lbStart);
            if(c.getCardinality()>0) {
               ((MutableRoaringArray) answer.highLowContainer).append((short) hbStart, c);
            }
@@ -293,9 +292,9 @@ public class ImmutableRoaringBitmap implements Iterable<Integer>, Cloneable, Imm
             }
         }
         
-        if((ilast >= 0) &&(lbLast != BufferUtil.maxLowBitAsInteger())) {
+        if(ilast >= 0) {
             final MappeableContainer c = rb.highLowContainer.getContainerAtIndex(ilast).remove(
-                     0,  lbLast+1);
+                    lbLast+1,  BufferUtil.maxLowBitAsInteger()+1);
            if(c.getCardinality()>0) {
               ((MutableRoaringArray) answer.highLowContainer).append((short) hbLast,c);
            }
